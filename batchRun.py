@@ -77,10 +77,10 @@ def batchEvol():
 		'evolAlgorithm': 'krichmarCustom',
 		'fitnessFunc': fitnessFunc, # fitness expression (should read simData)
 		'fitnessFuncArgs': fitnessFuncArgs,
-		'pop_size': 6,
-		'num_elites': 1, # keep this number of parents for next generation if they are fitter than children
+		'pop_size': 20,
+		'num_elites': 2, # keep this number of parents for next generation if they are fitter than children
 		'maximize': False, # maximize fitness function?
-		'max_generations': 4,
+		'max_generations': 50,
 		'time_sleep': 5, # wait this time before checking again if sim is completed (for each generation)
 		'maxiter_wait': 40, # max number of times to check if sim is completed (for each generation)
 		'defaultFitness': 1000 # set fitness value in case simulation time is over
