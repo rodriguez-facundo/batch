@@ -11,6 +11,7 @@ import json
 import logging
 import datetime
 from neuron import h
+from copy import copy
 from netpyne import specs
 from utils import bashTemplate
 from random import Random
@@ -179,8 +180,11 @@ class Batch(object):
     def openFiles2SaveStats(self):
         stat_file_name = '%s/%s_stats.cvs' %(self.saveFolder, self.batchLabel)
         ind_file_name = '%s/%s_stats_indiv.cvs' %(self.saveFolder, self.batchLabel)
-        
-        return open(stat_file_name, 'w'), open(ind_file_name, 'w')
+        individual = open(ind_file_name, 'w')
+        stats = open(stat_file_name, 'w')
+        stats.write('#gen  pop-size  worst  best  median  average  std-deviation\n')
+        individual.write('#gen  #ind  fitness  [candidate]\n')
+        return stats, individual
 
 
     def run(self):
@@ -481,7 +485,7 @@ wait
                 # remember pids and jobids in a list
                 pids = []
                 jobids = {}
-                        
+                
                 # create a job for each candidate
                 for candidate_index, candidate in enumerate(candidates):
                     # required for slurm
@@ -587,7 +591,7 @@ wait
                 fitness = [None for cand in candidates]
                 # print outfilestem
                 print "Waiting for jobs from generation %d/%d ..." %(ngen, args.get('max_generations'))
-                #print "PID's: %r" %(pids)
+                # print "PID's: %r" %(pids)
                 # start fitness calculation
                 while jobs_completed < total_jobs:
                     unfinished = [i for i, x in enumerate(fitness) if x is None ]
@@ -656,34 +660,30 @@ wait
             # -------------------------------------------------------------------------------
             # Mutator
             # -------------------------------------------------------------------------------
-            @EA.variators.mutator
+            @EC.variators.mutator
             def nonuniform_bounds_mutation(random, candidate, args):
                 """Return the mutants produced by nonuniform mutation on the candidates.
                 .. Arguments:
                    random -- the random number generator object
                    candidate -- the candidate solution
                    args -- a dictionary of keyword arguments
-                Required keyword arguments in args:       
-                Optional keyword arguments in args:    
+                Required keyword arguments in args:
+                Optional keyword arguments in args:
                 - *mutation_strength* -- the strength of the mutation, where higher
                   values correspond to greater variation (default 1)
-                
                 """
-                #bounder = args['_ec'].bounder
-                #num_gens = args['_ec'].num_generations
-                lower_bound = [x[0] for x in pRanges]
-                upper_bound = [x[1] for x in pRanges]
+                lower_bound = args.get('lower_bound')
+                upper_bound = args.get('upper_bound')
                 strength = args.setdefault('mutation_strength', 1)
-                exponent = strength
-                mutant = copy.copy(candidate)
+                mutant = copy(candidate)
                 for i, (c, lo, hi) in enumerate(zip(candidate, lower_bound, upper_bound)):
                     if random.random() <= 0.5:
-                        new_value = c + (hi - c) * (1.0 - random.random() ** exponent)
+                        new_value = c + (hi - c) * (1.0 - random.random() ** strength)
                     else:
-                        new_value = c - (c - lo) * (1.0 - random.random() ** exponent)
+                        new_value = c - (c - lo) * (1.0 - random.random() ** strength)
                     mutant[i] = new_value
-                mutant_bounded = bound_params(mutant)
-                return mutant_bounded
+                
+                return mutant
             # -------------------------------------------------------------------------------
             # Evolutionary optimization: Main code
             # -------------------------------------------------------------------------------
@@ -722,6 +722,8 @@ wait
 
             for key, value in self.evolCfg.iteritems(): 
                 kwargs[key] = value
+            if not 'maximize' in kwargs: kwargs['maximize'] = False
+            
             for key, value in self.runCfg.iteritems(): 
                 kwargs[key] = value
             
@@ -739,6 +741,8 @@ wait
                 ea.selector = EC.selectors.tournament_selection
                 ea.variator = [EC.variators.uniform_crossover, nonuniform_bounds_mutation] 
                 ea.replacer = EC.replacers.generational_replacement
+                if not 'tournament_size' in kwargs: kwargs['tournament_size'] = 2
+                if not 'num_selected' in kwargs: kwargs['num_selected'] = kwargs['pop_size']
             
             # Genetic
             elif self.evolCfg['evolAlgorithm'] == 'genetic':
@@ -773,7 +777,7 @@ wait
                 ea.topology = swarm.topologies.ring_topology
             
             else:
-                raise ValueError("%s is not a valid strategy" %(self.evolCfg['evolAlgorithm'])
+                raise ValueError("%s is not a valid strategy" %(self.evolCfg['evolAlgorithm']))
             ####################################################################
             ea.terminator = EC.terminators.generation_termination
             ea.observer = [EC.observers.stats_observer, EC.observers.file_observer]

@@ -27,7 +27,7 @@ def batchEvol():
 	pops['M'] = {'target': 15, 'width': 2, 'min': 0.2}
 	
 	## complex net
-	pops = {} 
+	# pops = {} 
 	# pops['E2'] = {'target': 5, 'width': 2, 'min': 1}
 	# pops['I2'] = {'target': 10, 'width': 5, 'min': 2}
 	# pops['E4'] = {'target': 30, 'width': 10, 'min': 1}
@@ -43,24 +43,25 @@ def batchEvol():
 		import numpy as np
 		pops = kwargs['pops']
 		maxFitness = kwargs['maxFitness']
-		popFitness = [min(np.exp(abs(v['target'] - simData['popRates'][k])/v['width']), maxFitness) 
+		popFitness = [None for i in pops.iteritems()]
+		popFitness = [min(np.exp(  abs(v['target'] - simData['popRates'][k])  /  v['width']), maxFitness) 
 				if simData["popRates"][k]>v['min'] else maxFitness for k,v in pops.iteritems()]
+		print(popFitness)
 		fitness = np.mean(popFitness)
-
+		print 
 		popInfo = '; '.join(['%s rate=%.1f fit=%1.f'%(p,r,f) for p,r,f in zip(simData['popRates'].keys(), simData['popRates'].values(), popFitness)])
 		print '  '+popInfo
 		#print 'Fitness = %f'%(fitness)
 		return fitness
 		
 	# create Batch object with paramaters to modify, and specifying files to use
-	b = batch.Batch(params=params)
+	b = Batch(params=params)
 	
 	# Set output folder, grid method (all param combinations), and run configuration
 	b.batchLabel = 'simple'
 	b.saveFolder = './'+b.batchLabel
 	b.method = 'evol'
 	b.runCfg = {
-		'evolAlgorithm': 'krichmarCustom',
 		'type': 'mpi_bulletin',#'hpc_slurm',#'mpi_bulletin',
 		'script': 'init.py',
 		'mpiCommand': 'mpirun',
@@ -73,6 +74,7 @@ def batchEvol():
 		#'custom': 'export LD_LIBRARY_PATH="$HOME/.openmpi/lib"' # only for conda users
 	}
 	b.evolCfg = {
+		'evolAlgorithm': 'krichmarCustom',
 		'fitnessFunc': fitnessFunc, # fitness expression (should read simData)
 		'fitnessFuncArgs': fitnessFuncArgs,
 		'pop_size': 6,
